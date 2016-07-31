@@ -1,0 +1,64 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>MapClient</title>
+    <style type="text/css" media="screen">
+        html, body  { height:100%; }
+        body { margin:0; padding:0; overflow:auto; text-align:center;
+            background-color: #ffffff; }
+        object:focus { outline:none; }
+        #flashContent { display:none; }
+    </style>
+    <script type="text/javascript" src="swfobject.js"></script>
+    <script type="text/javascript">
+        // For version detection, set to min. required Flash Player version, or 0 (or 0.0.0), for no version detection.
+        var swfVersionStr = "14.0.0";
+        // To use express install, set to playerProductInstall.swf, otherwise the empty string.
+        var xiSwfUrlStr = "playerProductInstall.swf";
+
+        var flashvars = {};
+        var params = {};
+        params.quality = "high";
+        params.bgcolor = "#ffff";
+        params.allowscriptaccess = "sameDomain";
+        params.allowfullscreen = "true";
+        var attributes = {};
+        attributes.id = "flash";
+        attributes.name = "flash";
+        attributes.align = "middle";
+        attributes.wmode = "direct";
+        swfobject.embedSWF(
+            'Main.swf', "flashContent",
+            "100%", "100%",
+            swfVersionStr, xiSwfUrlStr,
+            flashvars, params, attributes);
+        // JavaScript enabled so display the flashContent div in case it is not replaced with a swf object.
+        swfobject.createCSS("#flashContent", "display:block;text-align:middle;");
+    </script>
+	<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+	<script>
+    var socket = io.connect("http://localhost:3000");
+    socket.on('server_message', function(msg){
+		sendTextToAS3(msg);
+		console.log(msg);
+    });
+	
+	function sendTextToAS3(msg){
+		var flash =	document.getElementById("flash");
+		flash.recieveFromJSHandler(msg);
+	}
+	
+	function emit(command, msg) {
+		socket.emit(command, msg);
+	}
+</script>
+</head>
+<body>
+	<div id="flashContent">
+		<p>
+			To view this page ensure that Adobe Flash Player version
+			14.0.0 or greater is installed.
+		</p>
+	</div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark"
+               xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="creationCompleteHandler()">
+    <fx:Script><![CDATA[
+        import map.controller.MapController;
+        import map.model.MapModel;
+        import map.view.Map;
+
+        import mx.collections.ArrayList;
+
+        import spark.events.IndexChangeEvent;
+
+        import map.view.MapMarker;
+
+        private var _connectionService:ConnectionService;
+        private var _positionTimer:Timer;
+
+
+        private var _mapView:Map;
+        private var _mapMarker:MapMarker;
+
+        public static const TIMER_DELAY:int = 2000;
+
+        private function creationCompleteHandler():void
+        {
+            Logger.initialize(logText);
+
+            _connectionService = new ConnectionService();
+            _connectionService.addEventListener(ConnectionService.ON_LOCATION_CHANGED, updateMarker);
+
+
+            MapModel.inst.initCitiesList();
+            var cityList:ArrayList = new ArrayList();
+            for (var city:String in MapModel.inst.cities)
+            {
+                cityList.addItem(city);
+            }
+            comboBox.dataProvider = cityList;
+            createMap();
+        }
+
+        private function createMap():void
+        {
+            MapModel.inst.currentCity = MapModel.inst.cities[MapModel.KYIV];
+            _mapView = new Map(map);
+            map.addChild(_mapView);
+            map.width = _mapView.width;
+            map.height = _mapView.height;
+            Logger.inst.add("Map initialized");
+        }
+
+        private function updateMarker(event:Event):void
+        {
+            if (!_mapMarker)
+            {
+                _mapMarker = new MapMarker();
+                map.addChild(_mapMarker);
+                _mapMarker.x = _mapView.width / 2;
+                _mapMarker.y = _mapView.height / 2;
+            }
+            var relativeCoordinates:Point = MapModel.inst.relativeCoordinates;
+            var x:Number = _mapView.width * relativeCoordinates.x;
+            var y:Number = _mapView.height * relativeCoordinates.y;
+            _mapMarker.x = x;
+            _mapMarker.y = y;
+            _mapMarker.updateText(MapModel.inst.lat, MapModel.inst.long);
+        }
+
+        private function onStart():void
+        {
+            Logger.inst.add("Start listening server...");
+            starButton.enabled = false;
+            stopButton.enabled = true;
+            _connectionService.getPosition();
+            _positionTimer = new Timer(TIMER_DELAY);
+            _positionTimer.addEventListener(TimerEvent.TIMER, onTimerTick);
+            _positionTimer.start();
+        }
+
+
+        private function onStop():void
+        {
+            Logger.inst.add("Server listening has been canceled");
+            if (_positionTimer)
+            {
+                _positionTimer.stop();
+                _positionTimer.removeEventListener(TimerEvent.TIMER, onTimerTick);
+                _positionTimer = null;
+            }
+            starButton.enabled = true;
+            stopButton.enabled = false;
+        }
+
+        private function onClear():void
+        {
+            if (_mapMarker)
+            {
+                _mapMarker.parent.removeChild(_mapMarker);
+                _mapMarker = null;
+            }
+            onStop();
+            Logger.inst.clear();
+            canvas.height = 500;
+        }
+
+        private function onTimerTick(event:TimerEvent):void
+        {
+            _connectionService.getPosition();
+        }
+
+        protected function comboBox_changeHandler(event:IndexChangeEvent):void
+        {
+            MapModel.inst.currentCity = MapModel.inst.cities[comboBox.selectedItem];
+            MapController.inst.dispatchEvent(new Event(MapController.ON_CITY_CHANGE));
+            if (_mapMarker)
+            {
+                map.addChild(_mapMarker); // выносим маркер наверх
+            }
+        }
+        ]]></fx:Script>
+    <mx:Image id="map" x="0" y="50" width="1400" height="600"/>
+    <s:Button id="starButton" click="onStart()" label="Start" x="0" y="10"/>
+    <s:Button id="stopButton" click="onStop()" label="Stop" x="100" y="10" enabled="false"/>
+    <s:Button click="onClear()" label="Clear" x="200" y="10"/>
+    <s:Label text="City:" x="310" y="15" width="50" height="22"/>
+    <s:ComboBox id="comboBox" x="350" y="10" width="160" height="22" change="comboBox_changeHandler(event)">
+    </s:ComboBox>
+    <mx:Canvas id="canvas" height="500" width="500" x="700" y="50">
+        <mx:Text  id="logText" height="500" width="400"/>
+    </mx:Canvas>
+</s:Application>
